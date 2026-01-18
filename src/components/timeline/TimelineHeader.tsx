@@ -13,13 +13,19 @@ export const TimelineHeader = ({ startDate, endDate, dayWidth }: TimelineHeaderP
   const { zoom } = useTimelineStore()
 
   const months = useMemo(() => {
-    return eachMonthOfInterval({ start: startDate, end: endDate }).map((monthStart) => {
+    const allMonths = eachMonthOfInterval({ start: startDate, end: endDate })
+    
+    return allMonths.map((monthStart) => {
       const monthEnd = endOfMonth(monthStart)
       const visibleStart = max([monthStart, startDate])
       const visibleEnd = min([monthEnd, endDate])
       
       const left = differenceInDays(visibleStart, startDate) * dayWidth
-      const width = (differenceInDays(visibleEnd, visibleStart) + 1) * dayWidth
+      const daysInMonth = differenceInDays(visibleEnd, visibleStart) + 1
+      const calculatedWidth = daysInMonth * dayWidth
+      
+      const minWidth = 80
+      const width = Math.max(calculatedWidth, minWidth)
 
       return {
         date: monthStart,

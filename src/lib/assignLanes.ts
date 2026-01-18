@@ -1,8 +1,9 @@
-import { parseISO, differenceInDays, addDays, format } from 'date-fns'
+import { parseISO, differenceInDays, addDays, format, endOfMonth } from 'date-fns'
 import type { TimelineItem, Lane } from '@/types/timeline'
 
 const MIN_GAP_DAYS = 1
 const MIN_ITEM_DAYS = 3
+const MIN_VISUAL_WIDTH_DAYS = 6
 
 export const assignLanes = (items: TimelineItem[]): Lane[] => {
   if (items.length === 0) return []
@@ -15,26 +16,21 @@ export const assignLanes = (items: TimelineItem[]): Lane[] => {
 
   const lanes: Lane[] = []
 
-  const getEffectiveEndDate = (item: TimelineItem): Date => {
-    const startDate = parseISO(item.start)
-    const endDate = parseISO(item.end)
-    const durationDays = differenceInDays(endDate, startDate) + 1
-
-    if (durationDays < MIN_ITEM_DAYS) {
-      return addDays(startDate, MIN_ITEM_DAYS - 1)
-    }
-    return endDate
-  }
-
   const assignItemToLane = (item: TimelineItem): void => {
     const itemStart = parseISO(item.start)
 
     for (const lane of lanes) {
       const lastItemInLane = lane[lane.length - 1]
-      const lastItemEnd = getEffectiveEndDate(lastItemInLane)
-      const requiredGap = addDays(lastItemEnd, MIN_GAP_DAYS)
+      const lastItemStart = parseISO(lastItemInLane.start)
+      const lastItemEndDate = parseISO(lastItemInLane.end)
+      const lastItemDuration = differenceInDays(lastItemEndDate, lastItemStart) + 1
+      const lastItemEffectiveEnd = lastItemDuration < MIN_VISUAL_WIDTH_DAYS
+        ? addDays(lastItemStart, MIN_VISUAL_WIDTH_DAYS - 1)
+        : lastItemEndDate
+      
+      const requiredGap = addDays(lastItemEffectiveEnd, MIN_GAP_DAYS)
 
-      if (itemStart >= requiredGap) {
+      if (itemStart > requiredGap) {
         lane.push(item)
         return
       }
@@ -68,7 +64,9 @@ export const getDateRange = (
   const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())))
 
   const startDate = addDays(minDate, -paddingDays)
-  const endDate = addDays(maxDate, paddingDays)
+  const endDateWithPadding = addDays(maxDate, paddingDays)
+  const endDateOfMonth = endOfMonth(endDateWithPadding)
+  const endDate = endOfMonth(addDays(endDateOfMonth, 31))
   const totalDays = differenceInDays(endDate, startDate) + 1
 
   return { startDate, endDate, totalDays }

@@ -40,6 +40,7 @@ export const TimelineItemComponent = ({
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(item.name)
   const [isDragging, setIsDragging] = useState<'start' | 'end' | null>(null)
+  const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const itemRef = useRef<HTMLDivElement>(null)
   const dragStartX = useRef(0)
@@ -62,9 +63,20 @@ export const TimelineItemComponent = ({
     }
   }, [isEditing])
 
+  const handleClick = () => {
+    setIsFocused(true)
+  }
+
   const handleDoubleClick = () => {
     setIsEditing(true)
     setEditName(item.name)
+    setIsFocused(true)
+  }
+
+  const handleBlur = (e: React.FocusEvent) => {
+    if (!isEditing && !itemRef.current?.contains(e.relatedTarget as Node)) {
+      setIsFocused(false)
+    }
   }
 
   const handleSaveName = () => {
@@ -72,14 +84,20 @@ export const TimelineItemComponent = ({
       updateItem(item.id, { name: editName.trim() })
     }
     setIsEditing(false)
+    setIsFocused(false)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      e.preventDefault()
+      e.stopPropagation()
       handleSaveName()
     } else if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
       setEditName(item.name)
       setIsEditing(false)
+      setIsFocused(false)
     }
   }
 
@@ -153,7 +171,9 @@ export const TimelineItemComponent = ({
             'flex items-center px-2 text-white text-sm font-medium',
             'select-none',
             colorClass,
-            isDragging && 'opacity-80 ring-2 ring-white/50'
+            isDragging && 'opacity-80 ring-2 ring-white/50',
+            isFocused && !isEditing && 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-background shadow-lg scale-[1.02] z-10',
+            isEditing && 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg scale-[1.02] z-10'
           )}
           style={{
             left,
@@ -161,7 +181,9 @@ export const TimelineItemComponent = ({
             top: 4,
             height: laneHeight - 8,
           }}
+          onClick={handleClick}
           onDoubleClick={handleDoubleClick}
+          onBlur={handleBlur}
           tabIndex={0}
           role="button"
           aria-label={`Timeline item: ${item.name}`}
@@ -170,6 +192,7 @@ export const TimelineItemComponent = ({
               handleDoubleClick()
             }
           }}
+          onFocus={() => setIsFocused(true)}
         >
           <div
             className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20 rounded-l-md"
@@ -184,7 +207,11 @@ export const TimelineItemComponent = ({
               ref={inputRef}
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              onBlur={handleSaveName}
+              onBlur={(e) => {
+                if (!inputRef.current?.contains(e.relatedTarget as Node)) {
+                  handleSaveName()
+                }
+              }}
               onKeyDown={handleKeyDown}
               className="h-6 text-sm bg-white/20 border-white/30 text-white placeholder:text-white/50"
               onClick={(e) => e.stopPropagation()}
